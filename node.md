@@ -230,3 +230,172 @@ vite是新一代的前端构建工具，
 
 **如果需要兼容旧浏览器或处理复杂项目是，选择webpack**
 **如果追求开发效率和现代化前端开发体验，选择vite**
+
+## ref 和reactive
+
+1. 数据类型
+
+- ref
+    适用于基本类型（string number boolean），可以用于对象和数组。当传递对象和数组时，内部会自动调用`reactive`进行深层响应式转换
+- reactive
+  仅适用于对象类型（对象 数组 集合类型Map Set），对基本类型无效
+
+2.访问方式
+
+- ref
+  通过`.value`访问或修改值（模版中自动解包，无需`.value`）
+
+- reactive
+  直接访问属性
+
+3.重新赋值
+
+- ref
+  允许直接替换整个对象，保持响应性
+
+- reactive
+  重新赋值会失去响应性（本质是Proxy代理原始对象，而非变量本身）
+
+4.解构响应性
+
+- ref
+  解构时需要保持对`.value`的引用，否则失去响应性
+
+  ```js
+  const state = ref({a:1})
+  const a = state.value.a // 普通值，无响应性
+  ```
+
+- reactive
+  解构需用`toRefs`维持响应性
+
+  ```js
+  const state = reactive({a:1})
+  const {a} = toRefs(state)
+  ```
+
+5.使用场景
+
+- ref 适用场景
+  - 基本类型数据
+  - 需要替换整个对象/数组的响应式变量（如接口返回的数据替换）
+  - 组合函数中返回响应式变量，便于解构使用
+  
+  ```js
+  // usePerson.js
+  export function usePerson() {
+    const personRef = ref({
+      name: "Alice",
+      age: 11
+    })
+    const updatePerson = (name, age) => {
+      personRef.value.name = name
+      personRef.value.age = age
+    }
+
+    return {
+      person: personRef
+      updatePerson
+    }
+  }
+  ```
+
+  ```jsx
+  // vue
+  <template>
+    <div>
+      <p>Name: {{ person.name }}</p>
+      <p>Age: {{ person.age }}</p>
+      <button @click="updatePerson('Bob', 30)">Change Person</button>
+    </div>
+  </template>
+
+  <script>
+  import { usePerson } from "./usePerson"
+
+  export default {
+    setup() {
+      const {person, updatePerson} = userPerson()
+      return {
+        person,
+        updatePerson
+      }
+    }
+  }
+  <script>
+  ```
+
+- reactive 适用场景
+  - 复杂的嵌套对象或需保持引用一致的数据结构
+  - 无需重新赋值，仅需修改属性的对象
+
+6.TypeScript类型推断
+
+- ref
+  自动推断包裹类型， 如`Ref<number>`
+- reactive
+  更精准推断对象属性类型，适合复杂的结构
+
+|特性|ref|reactive|
+|---|---|---|
+|数据类型|基本类型+对象/数组|仅对象/数组|
+|访问方式|.value (模版自动解包）|直接访问属性|
+|重新赋值|支持（通过.value替换）|不支持（需保持对象引用一致）|
+|解构响应性|需保持.value引用|需toRefs转换|
+|适用场景|基本类型、需替换整体的数据|复杂对象、无需重新赋值的解构|
+
+## 计算属性
+
+计算属性是一种`基于响应式依赖进行缓存的属性`。它们会根据依赖的响应式数据自动更新，并且只有在依赖发生变化时才会重新计算。计算属性非常适合用于处理复杂的逻辑或需要频繁计算的场景
+
+**总结**
+计算属性是基于响应式依赖进行缓存的属性。
+
+计算属性可以通过 computed 函数定义，并且可以是只读的或可写的。
+
+计算属性适合用于处理复杂的逻辑或需要频繁计算的场景。
+
+计算属性和方法的主要区别在于缓存机制，计算属性会缓存结果，而方法每次调用都会执行。
+
+## watch
+
+- 基本用法
+
+  1. 监听ref定义的响应式数据
+  直接传入ref变量，可获取新旧值
+
+  ```js
+  import {ref, watch} form 'vue'
+  const count = ref(0)
+  watch(count, (newVal, oldVal) => {
+    console.log(`新值：${newVal}, 旧值：${oldVal}`)
+  })
+  ```
+
+  2. 监听reactive定义的响应式数据
+
+  ```js
+  const state = reactive({count:0})
+  watch(state,(newVal, oldVal)=> {
+    console.log(`新值：`, newVal.count)
+  })
+  ```
+
+- 进阶配置
+
+  1. 监听对象中的特定属性
+  2. 监听多个数据源
+  3. 配置选项
+
+- 特殊场景与注意事项
+
+  1. 停止监听
+  2. watch与watchEffect的区别
+  3. 监听ref的深拷贝对象
+
+- 常见问题
+
+  1. reactive对象无法获取旧值
+  2. 深度监听无效
+
+Vue 3 的 watch 提供了灵活的数据监听能力，适用于不同响应式数据类型（ref/reactive）和复杂场景（多数据源、深度监听）。合理使用配置选项（如 immediate、flush）可优化性能与行为。若需简化依赖追踪，可结合 watchEffect 使用
