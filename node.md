@@ -362,7 +362,8 @@ vite是新一代的前端构建工具，
 - 基本用法
 
   1. 监听ref定义的响应式数据
-  直接传入ref变量，可获取新旧值
+
+  *直接传入ref变量，可获取新旧值*
 
   ```js
   import {ref, watch} form 'vue'
@@ -374,28 +375,103 @@ vite是新一代的前端构建工具，
 
   2. 监听reactive定义的响应式数据
 
-  ```js
-  const state = reactive({count:0})
-  watch(state,(newVal, oldVal)=> {
-    console.log(`新值：`, newVal.count)
-  })
-  ```
+    *默认强制开启深度监听，但无法正确获取旧值（oldVal与newVal相同）*
+
+    ```js
+    const state = reactive({count:0})
+    watch(state,(newVal, oldVal)=> {
+      console.log(`新值：`, newVal.count)
+    })
+    ```
 
 - 进阶配置
 
   1. 监听对象中的特定属性
+
+  *使用函数式参数监听reactive对象的某个属性，可获取新旧值*
+
+  ```js
+  watch(() => state.count, (newVal, oldVal) => {
+    console.log(`新值：${newVal}, 旧值：${oldVal}`)
+  })
+  ```
+
   2. 监听多个数据源
+
+  *使用数组形式监听多个数据，参数按顺序对应*
+
+  ```js
+  watch([count, () => state.name], ([newCount, newName], [oldCount, oldName]) => {
+    console.log('多个数据变化'， newCount, newName)
+  })
+  ```
+
+  *任一数据变化都会触发回调*
   3. 配置选项
+
+  - `deep：true`：深度监听对象内部变化（对ref对象有效）
+  - `immediate: true`：立即执行回调（初始值触发）
+  - `flush: 'post'`： DOM更新后执行回调（避免操作未渲染的DOM）
+
+  ```js
+  watch(sourc, callback, { deep: true, immediate: true, flush: 'post'})
+  ```
 
 - 特殊场景与注意事项
 
   1. 停止监听
+
+  *watch返回一个停止函数，调用即可终止监听*
+
+  ```js
+  const stop = watch(count, callback)
+  stop()
+  ```
+
   2. watch与watchEffect的区别
+
+  - `watch`： 需显式指定监听源，可获取新旧值，适合精确控制
+  - `watchEffect`：自动追踪依赖，无新旧值，适合依赖多个数据的副作用
+
+  ```js
+  watchEffect(() => {
+    console.log('自动追踪：', count.value, state.name)
+  })
+  ```
+
   3. 监听ref的深拷贝对象
+
+  *若需获取引用类型数据的旧值，可监听其深拷贝*
+
+  ```js
+  const obj = ref({a:1})
+  watch(()=> ({...obj.value}), (newVal, oldVal) => {
+    console.log('新旧值不同：', newVal, oldVal)
+  }, {deep: true})
+  ```
 
 - 常见问题
 
   1. reactive对象无法获取旧值
+  *Vue3的响应式系统导致`oldVal`与`newVal`指向同一代理对象，需通过函数式监听属性或深拷贝解决*
   2. 深度监听无效
+  *`reactive`对象默认深度监听，`deep`配置对其无效*
 
-Vue 3 的 watch 提供了灵活的数据监听能力，适用于不同响应式数据类型（ref/reactive）和复杂场景（多数据源、深度监听）。合理使用配置选项（如 immediate、flush）可优化性能与行为。若需简化依赖追踪，可结合 watchEffect 使用
+**Vue 3 的 watch 提供了灵活的数据监听能力，适用于不同响应式数据类型（ref/reactive）和复杂场景（多数据源、深度监听）。合理使用配置选项（如 immediate、flush）可优化性能与行为。若需简化依赖追踪，可结合 watchEffect 使用**
+
+---
+
+## watchEffect
+
+立即运行一个函数，同时响应式地追踪其依赖，并在依赖更改时重新执行该函数
+
+watchEffect不用明确指出监视的数据（函数中用到了哪些属性，就监听哪些属性）
+
+---
+
+## 标签的ref属性
+
+用于注册模版引用
+
+- 用在普通`DOM`标签上，获取的是`DOM`节点
+- 用在组件标签上，获取的是组件的实例对象
