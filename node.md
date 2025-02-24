@@ -475,3 +475,81 @@ watchEffect不用明确指出监视的数据（函数中用到了哪些属性，
 
 - 用在普通`DOM`标签上，获取的是`DOM`节点
 - 用在组件标签上，获取的是组件的实例对象
+
+## 路由
+
+### 路由器工作模式
+
+- history模式
+  - 优点：URL更加美观，不带有#，更接近传统的网站URL
+  - 缺点：后期项目上线，需要服务端配合处理路径问题，否则刷新会有404错误
+  
+  ```js
+    const router = createRouter({
+      history: createWebHistory()
+      /**** */
+    })
+  ```
+
+- hash模式
+  - 优点：兼容性更好，因为不需要服务器端处理路径
+  - 缺点：URL带有#不太美观，且在SEO优化方面相对较差
+
+  ```js
+    const router = createRouter({
+      history: createWebHashHistory()
+    })
+  ```
+
+```nginx
+server{
+  listen 80;
+  server_name localhost;
+  root /root/gshop;
+
+  localtion / {
+    root /root/gshop;
+    index index.html;
+    try_files $uri $uri/ /index.html;
+    autoindex off； # 禁止目录列表
+  }
+}
+```
+
+**`try_files $uri $uri/ /index.html;`：这行代码的作用**
+
+在单页面应用（SPA），所有的路由都是由前端处理，服务器只需返回一个index.html。这个时候，当用户访问一个路径`/dashboard`时，服务器需要先检查是否存在`/dashboard`这个文件，如果不存在，再检查是否存在`/dashboard/`目录，如果都不存在，则返回`/index.html`,由前端处理。
+
+**`autoindex off`：这行代码的作用**
+若目录存在但无默认文件，可能导致列出目录内容。这行代码是关闭目录索引。
+
+## pinia
+
+**pinia 和Vuex 的区别**
+
+- 相同点：
+
+`pinia`和 `Vuex`, 都是Vue的状态管理库。
+他俩都是用来管理全局状态的。适用于组件间共享数据。
+
+- 不同点：
+vuex有State、Mutations、Action、Getters
+pinia更简化，使用Store定义，没有Mutations，直接通过Actions处理同步和异步操作
+
+Vuex的模块系统需要嵌套，而Pinia支持扁平化的模块，每个store独立，可能更容易组织代码。pinia对TypeScript的支持更好，不需要复杂的包装，使用起来更直观
+
+- Vuex
+  - 定位： Vue2的官方状态管理库，适用于中大型项目
+  - 核心概念：
+    - **state**：存储数据的唯一源头
+    - **Mutations**：唯一修改`state`的方法（同步操作）
+    - **Actions**： 处理异步操作，提交`mutations`
+    - **Getters**： 计算属性，派生`state`值
+    - **Modules**：将Store分割成模块（但模块嵌套可能复杂）
+- Pinia
+  - 定位：Vue3官方推荐的状态管理库，替代Vuex。更简洁、轻量，且天然支持TypeScript
+  - 核心特点：
+    - **无`mutations`**：直接通过`actions`处理同步/异步操作
+    - **扁平化模块**：每个Store独立，无需嵌套模块
+    - **Typescript友好**：自动推导类型，无需额外配置
+    - **Composition API 风格**：与Vue3的响应式系统更契合
