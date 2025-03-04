@@ -553,3 +553,404 @@ Vuex的模块系统需要嵌套，而Pinia支持扁平化的模块，每个store
     - **扁平化模块**：每个Store独立，无需嵌套模块
     - **Typescript友好**：自动推导类型，无需额外配置
     - **Composition API 风格**：与Vue3的响应式系统更契合
+
+### 定义一个Store
+
+`Store`是使用`defineStore()`定义的，并且它需要一个**唯一**名称，作为第一个参数传递，也称为id，它是必要的。Pinia使用它来将store连接到devtools。
+将返回到函数命名为use... 是跨可组合项的约定，以使其符合你的使用习惯。
+
+```ts
+import { defineStore } from "pinia";
+
+const useCountStore = defineStore('count', {
+  // 存储数据的地方
+  state() {
+    return {
+      sum: 6
+    }
+  },
+
+  actions: {
+    add() {
+      this.sum++
+    },
+    minus() {
+      this.sum--
+    }
+  }
+})
+
+export default useCountStore
+```
+
+**`store`是一个用`reactive`包裹的对象，这意味着不需要在`getter`之后写`.value`,但是就想在setup中的props一样，不能对其进行解构。
+为了从`Store`中提取属性同时保持其响应式，需要使用`storeToRefs()`。它将为任何响应式属性创建refs。仅在使用store中的状态但不调用任何操作时，很有用**
+
+### State
+
+state是store的核心部分。通常从定义应用程序的状态开始。在pinia中，状态被定义为返回初始状态的函数。
+
+#### 访问 `state`
+
+默认情况下，可以通过`store`实例访问状态来直接读取和写入状态：
+
+  ```js
+  const store = useStore()
+
+  store.sum++
+  ```
+
+#### 重置状态
+
+可以通过调用store上的`$reset()`方法将状态 重置 到其初始值：
+
+  ```js
+  const store = useStore()
+  store.$reset()
+  ```
+
+- 使用选项API
+
+  ```js
+  import { defineStore } from 'pinia'
+
+  const useCounterStore = defineStore('counteerStore', {
+    state:() => {
+      return [
+        counter: 0
+      ]
+    }
+  })
+  ```
+
+- 使用 `setup()`
+
+  ```js
+  import { useCounterStore } from "./store/counterStore"
+
+  export default {
+    setup() {
+      const counterStore = useCounterStore()
+
+      return { counterStore }
+    }
+    computed: {
+      tripleCounter() {
+        return counterStore.counter * 3
+      }
+    }
+  }
+  ```
+
+- 不使用`setup()`
+不使用`setup()`，则可以使用`mapState()`帮助器将状态属性映射为只读计算属性
+
+  ```js
+  import { mapState } from 'pinia'
+  import { useCounterStore } from '../store/counterStore'
+
+  export default {
+    computed: {
+      ...mapState(useCounterStore, {
+        myOwnName: 'counter',
+        double: store => store.counter * 2
+        magicValue(store) {
+          return store.someGetter + this.counter + this.double
+        }
+      })
+    }
+  }
+  ```
+
+#### 订阅状态($subscribe)
+
+可以通过store的`$subscribe()`方法查看状态及其变化。与常规的`watch()`相比，使用`$subscribe()`的优点是 subscriptions只会在patches之后触发一次。
+
+默认情况下，state subscriptions绑定到添加它们的组件。当组件被卸载时，它们将被自动删除。如果要在卸载组件后保留它们，需要 `{ detached: true }` 作为第二个参数传递给 detach 当前组件的state subsctiption
+
+```js
+countStore.$subscribe((mutation, state) => {
+  
+  mutation.type  // direct patch object patch fucntion
+  mutation.storeId // countStore.$id  count
+  mutation.payload // 仅当 mutation.type === ‘patch object' 时， 补丁对象传递给 countStore.$patch()
+})
+```
+
+例子：
+
+```js
+const countStore = useCountStore()
+
+console.log(countStore.sum)
+
+countStore.$subscribe((mutation, state) => {
+  console.log('countStore发生变化了')
+  console.log(mutation)
+  console.log(state)
+})
+
+/**
+ * 直接修改
+ */
+function add(){
+  countStore.add()
+}
+
+function minus() {
+  countStore.minus()
+}
+
+/**
+ * 使用$patch修改
+ * 
+ * 对象修改
+ */
+function patchObject() {
+  countStore.$patch({
+    sum: countStore.sum *3
+  })
+}
+
+/**
+ * 使用$patch修改
+ * 
+ * 函数修改
+ */
+function patchFunction(){
+  countStore.$patch((state) => {
+    state.sum = state.sum * 10
+  })
+}
+```
+
+![pinia订阅效果图](./pinia订阅.png)
+
+### Getters
+
+Getter 完全等同于Store状态的计算值。它们可以用`defineStore()`中的`getters`属性定义。它们接受“状态”作为第一个参数以鼓励箭头函数的使用：
+
+```js
+const useCountStore = defineStore('count', {
+  // 存储数据的地方
+  state() {
+    return {
+      sum: 6
+    }
+  },
+  getters:{
+    double:(state) => state.sum * 2,
+
+    /**
+     * 由于“doublePlusOne'”不具有返回类型批注并且在它的一个返回表达式中得到直*接或间接引用，因此它隐式具有返回类型 "any"。
+     */
+    doublePlusOne() {
+      return this.sum * 2 + 1
+    }
+
+    /**
+     * 
+     * 在使用常规函数通过this访问整个store的实例时，需要定义返回类型。
+     * 这是由于TypeScript中的一个已知限制，
+     * 使用箭头函数定义的getter，和不使用this的getter 不会受此影响
+     * 
+     */
+
+    doublePlusOne():number {
+      return this.sum * 2 + 1
+    }
+
+  },
+})
+```
+
+可以直接在store实例上访问getter：
+
+```html
+<p>{{ countStore.double }}</p>
+<p>{{ countStore.doublePlusOne }}</p>
+```
+
+#### 访问其他getter
+
+与计算属性一样，可以组合多个getter。通过`this`访问任何其他getter。即使不使用TypeScript，可以使用JSDoc提示IDE类型：
+
+```js
+const useCountStore = defineStore('count', {
+  // 存储数据的地方
+  state() {
+    return {
+      sum: 6
+    }
+  },
+  getters: {
+    // 不使用this，它的类型时自动推断的
+    double: (state) => state.sum * 2,
+
+    // 1 使用ts
+    doublePlusOne(): number {
+      return this.double + 1
+    },
+
+    // 2. 使用JSDoc
+    /**
+     * @returns { number }
+     */
+    doublePlusTow() {
+      return this.double + 1
+    }
+
+  },
+})
+```
+
+#### 将参数传递给getter
+
+Getters只是幕后的computed属性，故无法向它们传递任何参数。但是，可以从getter返回一个函数以接受任何参数：
+
+```js
+interface User {
+  id: number
+  name: string
+  age: number
+}
+
+const useCountStore = defineStore('count', {
+  // 存储数据的地方
+  state() {
+    return {
+      sum: 6,
+      users: [
+        { id: 1, name: 'Alice', age: 25 },
+        { id: 2, name: 'Bob', age: 30 },
+        { id: 3, name: 'Charlie', age: 28 }
+      ] as User[]
+    }
+  },
+  getters: {
+    getUseById:(state) => {
+      return (userId:number) => state.users.find(user => user.id === userId)
+    }
+  },
+})
+
+
+```
+
+#### 访问其他Store的getter
+
+要使用其他存储getter，可以直接贼getter内部使用它
+
+#### 与`setup()` 一起使用
+
+可以直接访问任何getter作为store的属性（与state属性完全一样）
+
+#### 使用选项API
+
+- 使用`setup()`
+虽然CompositionAPI并不适合所有人，但`setup()`钩子可以使在Options API 中使用Pinia更容易。不需要额外的map helpers 功能
+
+- 没有`setup()`
+可以使用 previous section of state 中使用的相同`mapState()`函数映射到getter：
+
+### Actions
+
+Actions相当于组件中的`methods`。它们可以使用`defineStore()`中的`actions`属性定义，并且它们非常适合定义业务逻辑：
+
+```js
+const useCountStore = defineStore('count', {
+  // 存储数据的地方
+  state() {
+    return {
+      sum: 6
+    }
+  },
+  actions: {
+    add() {
+      this.sum++
+    },
+    minus() {
+      this.sum--
+    }
+  }
+})
+```
+
+与getters一样，操作可以通过`this`访问 *whole store instance*  并提供完整类型（和自动完成）支持。与它们不同，`actions`可以使异步的，可以在其中`await`任何API调用甚至其他操作。
+
+```js
+export const useUsers = defineStore('users', {
+  state: () => ({userData: null}),
+  actions: {
+    async registerUser(login, password) {
+      try {
+        this.userData = await fetch(xxx)
+      } catch(error) {
+        showTootip(error) 
+        return error
+      }
+    }
+  }
+})
+```
+
+#### 访问其他store操作
+
+要使用另一个store，可以直接在操作内部使用它：
+
+#### 订阅 Actions
+
+可以使用`store.$onAction()`订阅action及其结果。传递给它的回调在action之前执行。`after`处理Promise并允许你在action完成后执行函数。以类似的方式，`onError`允许你在处理中抛出错误。这些对于在运行时跟踪错误很有用，类似于vue文档中的这个提示。
+
+```js
+countStore.$onAction(({
+  name,
+  store,
+  args,
+  after,
+  onError
+}) => {
+  const startTime = Date.now()
+  console.log(`Start "${name}" with params [${args.join(', ')}]`)
+  after((result) => {
+    console.log(
+      `Finished "${name}" after ${Date.now() - startTime}ms.\nResult:${result}.`
+    )
+  })
+  onError((error) => {
+    console.warn(`Failed "${name}" after ${Date.now() - startTime}ms.\nError:${error}.`)
+  })
+})
+```
+
+![onAction](./onAction.png)
+
+默认情况，action subscriptions 绑定到添加它们的组件（如果store位于组件的`setup()`内)。意思是，当组件被卸载时，它们将被自动删除。如果要在卸载组件后保留它们，请将`true`作为第二个参数传递给当前组件的detach action subscription
+
+### plugin
+
+由于是底层API，pinia store 可以完全扩展。
+
+- 向Store添加属性
+- 定义Store时添加新选项
+- 为Store添加新方法
+- 包装现有方法
+- 更改甚至取消操作
+- 实现本地存储等副作用
+- 仅适用于特定的Store
+
+使用`pinia.use()`将插架添加到pinia实例中。
+
+```js
+function SecretPiniaPligin() {
+  return { secret: 'the cake is a lie'}
+}
+
+pinia.use(SecretPiniaPligin)
+```
+
+这对于添加全局对象（路由器、模式或者toast管理器）很有用
+
+#### 介绍
+
+Pinia插架是一个函数，可以选择返回要添加到store到属性。它需要一个可选参数，一个context：
