@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import MyUi from './MyUi.vue';
+import MyInput from './MyInput.vue';
 import {useCountStore} from '@/store'
+
+
 
 defineProps<{
   msg: string
 }>()
 
-
+const haha = ref("sj")
+const foo = ref('nihao')
 const countStore = useCountStore()
-
+console.log(countStore)
 console.log(countStore.sum)
 
 // countStore.$subscribe((mutation, state) => {
@@ -76,6 +81,9 @@ function patchFunction(){
 
     <p>{{ countStore.double }}</p>
     <p>{{ countStore.doublePlusOne }}</p>
+    <MyUi v-model="haha"/>
+    {{ foo }}
+    <MyInput :model-value="foo" @update:model-value="$event => (foo = $event)"/>
   </div>
 </template>
 

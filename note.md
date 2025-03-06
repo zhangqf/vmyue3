@@ -954,3 +954,219 @@ pinia.use(SecretPiniaPligin)
 #### 介绍
 
 Pinia插架是一个函数，可以选择返回要添加到store到属性。它需要一个可选参数，一个context：
+
+```js
+export function myPiniaPlugin(context) {
+  context.pinia
+  context.app
+  context.store
+  context.options
+}
+```
+
+```js
+
+function SecretPiniaPligin(context: PiniaPluginContext) {
+  console.log(context)
+  return { secret: 'the cake is a lie' }
+}
+
+pinia.use(SecretPiniaPligin)
+```
+
+![piniaPlugins](./piniaPlugin.png)
+
+### 为所有组件创建公共属性（扩充store）
+
+- 第一种扩充方式
+
+```js
+pinia.use(() => {
+  return {
+    author: '何必貌似'
+  }
+})
+
+```
+
+- 第二种扩充方式
+
+```js
+pinia.use(({ store }) => {
+  store.author = '何必貌似'
+})
+```
+
+![扩充store属性](./_customProperties.png)
+
+每个store都使用`reactive`包装，自动展开任何Ref()，它包含了
+
+```js
+const sharedRef = ref('shared')
+
+pinia.use(({ store }) => {
+  store.hello = 'world'
+  store.withRefHello = ref('world')
+  store.shared = sharedRef
+
+  console.log(store.withRefHello)
+  console.log(store.shared)
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(23423)
+    store._customProperties.add('hello')
+  }
+})
+```
+
+![store都使用reactive包装](./piniaStoreReactive.png)
+
+### 添加新的外部属性
+
+当添加外部属性、来自其他库的类实例或仅仅是非响应式的东西时，应该在将对象传递给pinia之前使用`markRaw()`包装对象。
+
+```js
+import { markRaw } from "vue"
+
+import { router } from "./router"
+
+pinia.use(({store})=>{
+  store.router = markRaw(router)
+})
+```
+
+### 在插架中调用`$subscribe`
+
+```js
+pinia.use(({store}) => {
+  store.$subscribe(() => {})
+  store.$onAction(() => {})
+})
+```
+
+### 添加新选项
+
+可以在定义store时创建新选项，以便以后从插件中使用它们。
+
+```js
+defineStore('search', {
+  action: {
+    searchContacts() {
+
+    }
+  },
+  debounce: {
+    searchContacts: 300
+  }
+})
+```
+
+## v-model
+
+- 使用`defineModel`宏
+
+  子组件
+
+  ```js
+  <template>
+    <div>
+      <input v-model="m">{{ m }}
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  const m = defineModel()
+  </script>
+  ```
+
+  父组件
+
+  ```js
+  <script setup lang="ts">
+  import { ref } from 'vue';
+  import MyUi from './MyUi.vue';
+  const haha = ref("sj")
+  </script>
+
+  <template>
+    <MyUi v-model="haha"/>
+  </template>
+  ```
+
+- 底层机制
+
+  `defineModel`是一个便利宏。编译器将其展开为以下内容：
+  
+  - 一个名为`modelValue`的prop，本地ref的值与其同步
+  - 一个名为`update:modelValue`的事件，当本地ref的值发生变更时触发
+
+  - 子组件
+
+  ```js
+  <template>
+  <div>
+    <input 
+    :value="props.modelValue"
+    @input="emit('update:modelValue', (<HTMLInputElement>$event.target).value)"
+    >
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  const props = defineProps(['modelValue'])
+  const emit = defineEmits(['update:modelValue'])
+  </script>
+  ```
+
+  - 父组件
+
+  ```js
+  import MyInput from './MyInput.vue';
+  const foo = ref('nihao')
+  </template>
+      <MyInput :model-value="foo" @update:model-value="$event => (foo = $event)"/>
+    </div>
+  </template>
+  ```
+
+### 透传Attributes
+
+“透传attribute” 指的是传递给一个组件，却没有被该组件声明`props` 或 `emits`的attribute或者`v-on`事件监听器。最常见的例子就是`class`、`style`和`id`
+
+```js
+<!--<MyButton>的模版-->
+<button>Click Me</button>
+```
+
+```js
+<MyButton class='large' />
+```
+
+渲染后的DOM结果是：
+
+```js
+<button class='large'>Click me<button>
+```
+
+这里的`<MyButton>`并没有将`class`声明为一个它所接受的prop，所以`class`被视作透传attribute，自动透传到了`<MyButton>`的跟元素上
+
+### $refs
+
+- 概述：
+  - $refs用于：**父 -> 子**
+  - $parent用于：**zi -> 父**
+
+- 原理：
+
+  |属性|说明
+  |---|---
+  |$refs|值为对象，包含所有被ref属性标识的DOM元素或组件实例
+  |$parent|值为对象，当前组件的父组件实例对象
+
+### provide、 inject
+
+- 概述：实现**祖孙组件**直接通信
+- 具体使用：
+  - 在祖先组件中通过`provide`配置向后代组件提供数据
+  - 在后代组件中通过`inject`配置来声明接收数据
+- 具体编码：
