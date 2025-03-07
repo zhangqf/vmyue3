@@ -4,6 +4,7 @@ import MyUi from './MyUi.vue';
 import MyInput from './MyInput.vue';
 import {useCountStore} from '@/store'
 
+import Parent from './Parent.vue';
 
 
 defineProps<{
@@ -84,6 +85,7 @@ function patchFunction(){
     <MyUi v-model="haha"/>
     {{ foo }}
     <MyInput :model-value="foo" @update:model-value="$event => (foo = $event)"/>
+    <Parent/>
   </div>
 </template>
 

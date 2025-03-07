@@ -1169,4 +1169,64 @@ defineStore('search', {
 - 具体使用：
   - 在祖先组件中通过`provide`配置向后代组件提供数据
   - 在后代组件中通过`inject`配置来声明接收数据
-- 具体编码：
+
+### 插槽
+
+- 默认插槽
+
+```js
+<template>
+  <div class="ui-parent">
+    父
+    <children>
+      你好 我是来自父组件的内容
+    </children>
+  </div>
+</template>
+```
+
+```js
+<template>
+  <div class="ui-child">
+    子
+    <slot>默认内容：（当父组件不传递内容时显示）</slot>
+  </div>
+</template>
+```
+
+- 具名插槽
+
+```js
+<template>
+  <div class="ui-parent">
+    父
+    <children>
+      <template #header>
+        <p>header</p>
+      </template>
+      你好 我是来自父组件的内容
+      <template #footer>
+        <p>footer</p>
+      </template>
+    </children>
+  </div>
+</template>
+```
+
+```js
+<template>
+  <div class="ui-child">
+    子
+    <slot name="header"></slot>
+    <slot>默认内容：（当父组件不传递内容时显示）</slot>
+    <slot name="footer"></slot>
+  </div>
+</template>
+```
+
+- 进阶技巧
+  - 作用域插槽(数据传递)
+  
+  ```js
+
+  ```
