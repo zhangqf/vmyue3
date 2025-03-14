@@ -1255,4 +1255,12 @@ defineStore('search', {
     </template>
   </childrenAttr>
   ```
-  
+
+---
+
+|组件关系| 传递方式|
+|---|---|
+|父传子|`props`<br> `v-model` <br> `$refs`<br> `默认插槽、具名插槽`|
+|子传父|`props`<br> `自定义事件`<br> `v-model`<br> `$parent`<br> `作用域插槽`|
+|祖孙传、孙祖传|`$attrs`<br> `provide`<br> `inject`|
+|兄弟间、任意组件间|`mitt`<br> `pinia`|
