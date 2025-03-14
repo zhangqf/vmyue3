@@ -19,5 +19,6 @@
   padding: 10px;
   background-color: antiquewhite;
   box-shadow: 0 0 10px sandybrown;
+  box-sizing: content-box;
 }
 </style>

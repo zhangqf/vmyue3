@@ -10,11 +10,17 @@
         <p>footer</p>
       </template>
     </children>
+    <childrenAttr>
+      <template v-slot="params">
+        {{ params.text }}
+      </template>
+    </childrenAttr>
   </div>
 </template>
 
 <script setup lang="ts">
 import children from './children.vue';
+import childrenAttr from './childrenAttr.vue';
 
 </script>
 
@@ -24,5 +30,6 @@ import children from './children.vue';
   padding: 10px;
   /* border: 1px solid #ccc; */
   box-shadow: 0px 0px 10px slategray;
+  box-sizing: content-box;
 }
 </style>

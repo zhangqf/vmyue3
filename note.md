@@ -1227,6 +1227,32 @@ defineStore('search', {
 - 进阶技巧
   - 作用域插槽(数据传递)
   
-  ```js
+  *插槽的内容无法访问到子组件的状态*
 
+  在某些场景下插槽的内容可能想要同时使用父组件域内和子组件域内的数据。要做到这一点，需要一种方法来让**子组件在渲染时将一部分数据提供给插槽**
+
+  ```js
+  <template>
+    <div>
+      <slot :text="greetingsMessage"></slot>
+    </div>
+  </template>
+
+  <script setup lang="ts">
+  import { ref, reactive } from 'vue';
+  const greetingsMessage = ref('作用于插槽')
+  </script>
+
+  <style scoped>
+
+  </style>
   ```
+
+  ```js
+  <childrenAttr>
+    <template v-slot="params">
+      {{ params.text }}
+    </template>
+  </childrenAttr>
+  ```
+  
